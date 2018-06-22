@@ -18,8 +18,8 @@ var ModelDialogList = (function (_super) {
         //点击选择项目时
         this.list.selectHandler = new Laya.Handler(this, function (index) {
             var img=this.list.array[index].img.skin;
-            this.close();
             Laya.stage.getChildByName("mainUI").setModel(img);
+            this.close();
         });
         this.list.scrollBar.changeHandler=new Laya.Handler(this,function(e){
             console.log("change:",e)

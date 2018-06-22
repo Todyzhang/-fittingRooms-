@@ -53495,8 +53495,8 @@ var FsDialogList = (function (_super) {
         
         this.list.selectHandler = new Laya.Handler(this, function (index) {
             var img=this.list.array[index].img.skin;
-            this.close();
             Laya.stage.getChildByName("mainUI").setTexture(img);
+            this.close();
         });
         this.list.scrollBar.changeHandler=new Laya.Handler(this,function(e){
             console.log("change:",e)
@@ -53524,8 +53524,8 @@ var ModelDialogList = (function (_super) {
         //点击选择项目时
         this.list.selectHandler = new Laya.Handler(this, function (index) {
             var img=this.list.array[index].img.skin;
-            this.close();
             Laya.stage.getChildByName("mainUI").setModel(img);
+            this.close();
         });
         this.list.scrollBar.changeHandler=new Laya.Handler(this,function(e){
             console.log("change:",e)
@@ -53599,6 +53599,7 @@ var Main = (function (_super) {
     };
 
     _proto.onMouseDown = function (e) {
+        window.wx && wx.showModal && wx.showModal({ content: "点击花色按钮" });
         this.mmp.p1 = { x: e.stageX, y: e.stageY };
         this.mmp.mp = { x: this.colour_texture.x, y: this.colour_texture.y };
         this.blend.visible=false;
@@ -53618,7 +53619,7 @@ var Main = (function (_super) {
     };
 
     _proto.onFsBtnClick = function (e) {
-        wx&&wx.showModal&&wx.showModal({ content: "点击花色按钮" });
+        //wx&&wx.showModal&&wx.showModal({ content: "点击花色按钮" });
         new FsDialogList().popup();
     };
     _proto.onModelBtnClick = function (e) {

@@ -18,8 +18,8 @@ var FsDialogList = (function (_super) {
         
         this.list.selectHandler = new Laya.Handler(this, function (index) {
             var img=this.list.array[index].img.skin;
-            this.close();
             Laya.stage.getChildByName("mainUI").setTexture(img);
+            this.close();
         });
         this.list.scrollBar.changeHandler=new Laya.Handler(this,function(e){
             console.log("change:",e)
