@@ -83,7 +83,7 @@ var Main = (function (_super) {
     };
 
     _proto.onFsBtnClick = function (e) {
-        //wx&&wx.showModal&&wx.showModal({ content: "点击花色按钮" });
+        wx&&wx.showModal&&wx.showModal({ content: "点击花色按钮" });
         new FsDialogList().popup();
     };
     _proto.onModelBtnClick = function (e) {
