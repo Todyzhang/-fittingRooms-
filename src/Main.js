@@ -21,29 +21,35 @@ var Main = (function (_super) {
         this.colour_texture = new Laya.Sprite();//花色块纹理层，用于纹理的移到效果 
         this.msk = new Laya.Sprite();//遮罩层
         this.blend = new Laya.Sprite();//最终溶合效果层
+        this.clothes = new Laya.Sprite();//有色衣服层-置换参照图
 
         this.colour.addChildren(this.colour_texture);
         this.colourWrap.addChildren(this.colour, this.blend);
 
-        this.colourWrap.width = 750;
-        this.colourWrap.height = 1334;
+        this.colour.width = 750;
+        this.colour.height = 784;
+        this.colour.pos(0, 201);
+        this.colour_texture.width = 750;
+        this.colour_texture.height = 1334;
+        this.colour_texture.pos(0, -201);
+
         this.modelPig.pos(0, 201);
         this.msk.pos(0, 201);
         this.blend.pos(0, 201);
-        
+
         //this.colourWrap.zOrder = 2;
 
         this.loadSource();
         this.addEvents();
     };
-    _proto.initTexturePos=function() {
+    _proto.initTexturePos = function () {
         this.mmp = { p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 }, mp: { x: 0, y: 0 } };//记录花色位置信息
         this.colour_texture.pos(0, 0);
     }
 
     _proto.loadSource = function () {
-        this.loadModel("comp/model1.jpg");
-        this.setTexture("comp/fs1.jpg");       
+        this.loadModel("comp/model2.jpg");
+        this.setTexture("comp/fs1.jpg");
     };
     _proto.loadModel = function (imgUrl) {
         this.modelPig.graphics.clear();
@@ -51,8 +57,10 @@ var Main = (function (_super) {
         this.msk.graphics.clear();
         this.blend.graphics.clear();
         this.msk.loadImage(imgUrl.replace(".jpg", "_msk.png"));
-        this.colour.mask = this.msk;
-        //this.colourWrap.mask = this.msk;
+        this.clothes.graphics.clear();
+        this.clothes.loadImage(imgUrl.replace(".jpg", "_s_msk.png"));
+        this.colourWrap.mask = this.msk;
+
         this.initTexturePos();
     }
 
@@ -67,7 +75,7 @@ var Main = (function (_super) {
         window.wx && wx.showModal && wx.showModal({ content: "点击花色按钮" });
         this.mmp.p1 = { x: e.stageX, y: e.stageY };
         this.mmp.mp = { x: this.colour_texture.x, y: this.colour_texture.y };
-        this.blend.visible=false;
+        this.blend.visible = false;
         //this.colour_texture.alpha=0.9;
         this.modelPig.on("mousemove", this, this.onMouseMove);
         this.modelPig.on("mouseup", this, this.onMouseUp);
@@ -93,6 +101,112 @@ var Main = (function (_super) {
     _proto.onMlBtnClick = function (e) {
         console.log("面料click");
     };
+    _proto.checkRow = function(row) {
+        if (row < 0) row = 0;
+        if (row > 784) row = 784;
+        return row;
+    };
+    _proto.checkCol = function (col) {
+        if (col < 0) col = 0;
+        if (col > 750) col = 750;
+        return col;
+    };
+    //红色通道的下标
+    _proto.getRedIndex = function(row,col) {
+        return (row*750+col)*4;
+    };
+    _proto.caluRowCol = function (row, col, red, green) {
+        /*
+            horizontal 水平
+            vertical   垂直
+            diagonal   对角
+            direction  方向
+        */
+        var x, y, decimal_x, decimal_y, direction_x, direction_y, reback = {};
+        //移动的位置距离
+        var colNum = (red - 128) * 0.05 ;
+        var rowNum = (green - 128) * 0.05;
+
+        direction_x = rowNum > 0;//方向
+        direction_y = colNum > 0;
+        colNum=Math.abs(colNum);
+        rowNum=Math.abs(rowNum);
+
+        y = ~~colNum;//取整
+        x = ~~rowNum;
+        decimal_x = rowNum - x;//取小数
+        decimal_y = colNum - y;
+
+        reback.target = {};
+        reback.target.row = this.checkRow(direction_x ? (row + x) : (row - x));
+        reback.target.col = this.checkCol(direction_y ? (col + y) : (col - y));
+        reback.target.red = this.getRedIndex(reback.target.row,reback.target.col);
+        reback.target.area = (1 - decimal_x) * (1 - decimal_y);
+
+        reback.diagonal = {};
+        reback.diagonal.row = this.checkRow(direction_x ? (row + x + 1) : (row - x - 1));
+        reback.diagonal.col = this.checkCol(direction_y ? (col + y + 1) : (col - y - 1));
+        reback.diagonal.red = this.getRedIndex(reback.diagonal.row, reback.diagonal.col);
+        reback.diagonal.area = decimal_x * decimal_y;
+
+        reback.horizontal = {};
+        reback.horizontal.row = reback.diagonal.row;
+        reback.horizontal.col = reback.target.col;
+        reback.horizontal.red = this.getRedIndex(reback.horizontal.row, reback.horizontal.col);
+        reback.horizontal.area = (1 - decimal_x) * decimal_y;
+
+        reback.vertical = {};
+        reback.vertical.row = reback.target.row;
+        reback.vertical.col = reback.diagonal.col;
+        reback.vertical.red = this.getRedIndex(reback.vertical.row, reback.vertical.col);
+        reback.vertical.area = decimal_x * (1 - decimal_y);        
+        //console.log(JSON.stringify(reback))
+        return reback;
+    }
+    /*
+        photoshop 滤镜-置换
+    */
+    _proto.displace = function () {
+        var canvas_clothes = this.clothes.drawToCanvas(750, 784, 0, 0);
+        var clothes_ctx = canvas_clothes.getContext("2d");
+        var clothes_imgData = clothes_ctx.getImageData(0, 0, 750, 784);
+        var clothes_data = clothes_imgData.data;
+
+        var canvas_texture = this.colour.drawToCanvas(750, 784, 0, 0);
+        var texture_ctx = canvas_texture.getContext("2d");
+        var texture_imgData = texture_ctx.getImageData(0, 0, 750, 784);
+        var texture_data = texture_imgData.data;
+
+        var i, j, d,len = clothes_data.length, red, red_index, green, alpha;
+        var clone_data = this.colour.drawToCanvas(750, 784, 0, 0).getContext("2d").getImageData(0, 0, 750, 784).data;
+        for (i = 0; i < 784; i++) {
+
+            for (j = 0; j < 750; j++) {
+                red_index = this.getRedIndex(i,j);
+                red = clothes_data[red_index];
+                green = clothes_data[red_index + 1];
+                alpha = clothes_data[red_index + 3];
+                if (alpha === 0) continue;
+
+                d=this.caluRowCol(i,j,red,green);
+
+                texture_data[red_index] = clone_data[d.target.red] * d.target.area + clone_data[d.horizontal.red] * d.horizontal.area + 
+                clone_data[d.vertical.red] * d.vertical.area + clone_data[d.diagonal.red] * d.diagonal.area;
+                texture_data[red_index + 1] = clone_data[d.target.red+1] * d.target.area + clone_data[d.horizontal.red+1] * d.horizontal.area +
+                    clone_data[d.vertical.red+1] * d.vertical.area + clone_data[d.diagonal.red+1] * d.diagonal.area;
+                texture_data[red_index + 2] = clone_data[d.target.red + 2] * d.target.area + clone_data[d.horizontal.red + 2] * d.horizontal.area +
+                    clone_data[d.vertical.red + 2] * d.vertical.area + clone_data[d.diagonal.red + 2] * d.diagonal.area;
+                texture_data[red_index + 3] = clone_data[d.target.red + 3];
+            }
+        }
+        texture_ctx.putImageData(texture_imgData, 0, 0);
+        // document.body.appendChild(canvas_clothes.getCanvas());
+        // document.body.appendChild(canvas_texture.getCanvas());
+        return texture_ctx;
+    }
+    /*
+        photoshop 正片叠底
+    */
     _proto.multiply = function () {
         /*
             public function drawToCanvas(canvasWidth:Number, canvasHeight:Number, offsetX:Number, offsetY:Number):HTMLCanvas
@@ -112,10 +226,10 @@ var Main = (function (_super) {
         */
         var canvas_model = this.msk.drawToCanvas(750, 784, 0, 0);
         var model_ctx = canvas_model.getContext("2d");
-        var model_imgData = model_ctx.getImageData(0, 0, canvas_model.width, canvas_model.height);
-        var canvas_texture = this.colour.drawToCanvas(750, 784, 0, -201);
-        var texture_ctx = canvas_texture.getContext("2d");
-        var texture_imgData = texture_ctx.getImageData(0, 0, canvas_texture.width, canvas_texture.height);
+        var model_imgData = model_ctx.getImageData(0, 0, 750, 784);
+        //var canvas_texture = this.displace();
+        var texture_ctx = this.displace();
+        var texture_imgData = texture_ctx.getImageData(0, 0, 750, 784);
         /*
             var imageData = ctx.getImageData(0,0,canvas.width, canvas.height);
             var data = imageData.data;
@@ -151,11 +265,11 @@ var Main = (function (_super) {
         }
 
         model_ctx.putImageData(model_imgData, 0, 0);
-        
-        
-        this.blend.visible=true;
+
+
+        this.blend.visible = true;
         this.blend.graphics.drawTexture(new Laya.Texture(canvas_model));
-        //document.body.appendChild(canvas_model.getCanvas());
+        // document.body.appendChild(canvas_model.getCanvas());
         // document.body.appendChild(canvas_texture.getCanvas());
     };
     _proto.setTexture = function (imgUrl) {
@@ -163,10 +277,10 @@ var Main = (function (_super) {
         this.multiply();
     };
     _proto.setModel = function (imgUrl) {
-        var that=this;
+        var that = this;
         this.loadModel(imgUrl);
         //setTimeout(function(){
-            that.multiply();
+        that.multiply();
         //},200)
     }
 
