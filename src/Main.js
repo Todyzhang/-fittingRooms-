@@ -62,6 +62,9 @@ var Main = (function (_super) {
         this.colourWrap.mask = this.msk;
 
         this.initTexturePos();
+
+        // console.log(this.colorBlend([{ "rgbNum": { "r": 122, "g": 122, "b": 122 }, "percent": 0.3599999999999996 }, { "rgbNum": { "r": 122, "g": 122, "b": 122 }, "percent": 0.24000000000000007 }, { "rgbNum": { "r": 102, "g": 102, "b": 102 }, "percent": 0.24000000000000007 }, { "rgbNum": { "r": 102, "g": 102, "b": 102 }, "percent": 0.16000000000000028 }]));
+        // console.log(this.colorBlend2([{ "rgbNum": { "r": 122, "g": 122, "b": 122 }, "percent": 0.3599999999999996 }, { "rgbNum": { "r": 122, "g": 122, "b": 122 }, "percent": 0.24000000000000007 }, { "rgbNum": { "r": 102, "g": 102, "b": 102 }, "percent": 0.24000000000000007 }, { "rgbNum": { "r": 102, "g": 102, "b": 102 }, "percent": 0.16000000000000028 }]))
     }
 
     _proto.addEvents = function () {
@@ -101,7 +104,7 @@ var Main = (function (_super) {
     _proto.onMlBtnClick = function (e) {
         console.log("面料click");
     };
-    _proto.checkRow = function(row) {
+    _proto.checkRow = function (row) {
         if (row < 0) row = 0;
         if (row > 784) row = 784;
         return row;
@@ -112,8 +115,8 @@ var Main = (function (_super) {
         return col;
     };
     //红色通道的下标
-    _proto.getRedIndex = function(row,col) {
-        return (row*750+col)*4;
+    _proto.getRedIndex = function (row, col) {
+        return (row * 750 + col) * 4;
     };
     _proto.caluRowCol = function (row, col, red, green) {
         /*
@@ -124,28 +127,31 @@ var Main = (function (_super) {
         */
         var x, y, decimal_x, decimal_y, direction_x, direction_y, reback = {};
         //移动的位置距离
-        var colNum = (red - 128) * 0.05 ;
-        var rowNum = (green - 128) * 0.05;
+        var colNum = (red - 128) * 0.05;//水平的褶皱一般是通过红色通道来处理,0-128向右，128-255向左
+        var rowNum = (green - 128) * 0.05;//垂直的褶皱一般是通过绿色通道来处理,0-128向下，128-255向上
 
         direction_x = rowNum > 0;//方向
         direction_y = colNum > 0;
-        colNum=Math.abs(colNum);
-        rowNum=Math.abs(rowNum);
+        colNum = Math.abs(colNum);
+        rowNum = Math.abs(rowNum);
 
         y = ~~colNum;//取整
         x = ~~rowNum;
         decimal_x = rowNum - x;//取小数
         decimal_y = colNum - y;
 
+        reback.x = x;
+        reback.y = y;
+
         reback.target = {};
-        reback.target.row = this.checkRow(direction_x ? (row + x) : (row - x));
-        reback.target.col = this.checkCol(direction_y ? (col + y) : (col - y));
-        reback.target.red = this.getRedIndex(reback.target.row,reback.target.col);
+        reback.target.row = this.checkRow(direction_x ? (row - x) : (row + x));
+        reback.target.col = this.checkCol(direction_y ? (col - y) : (col + y));
+        reback.target.red = this.getRedIndex(reback.target.row, reback.target.col);
         reback.target.area = (1 - decimal_x) * (1 - decimal_y);
 
         reback.diagonal = {};
-        reback.diagonal.row = this.checkRow(direction_x ? (row + x + 1) : (row - x - 1));
-        reback.diagonal.col = this.checkCol(direction_y ? (col + y + 1) : (col - y - 1));
+        reback.diagonal.row = this.checkRow(direction_x ? (row - x - 1) : (row + x + 1));
+        reback.diagonal.col = this.checkCol(direction_y ? (col - y - 1) : (col + y + 1));
         reback.diagonal.red = this.getRedIndex(reback.diagonal.row, reback.diagonal.col);
         reback.diagonal.area = decimal_x * decimal_y;
 
@@ -159,8 +165,8 @@ var Main = (function (_super) {
         reback.vertical.row = reback.target.row;
         reback.vertical.col = reback.diagonal.col;
         reback.vertical.red = this.getRedIndex(reback.vertical.row, reback.vertical.col);
-        reback.vertical.area = decimal_x * (1 - decimal_y);        
-        //console.log(JSON.stringify(reback))
+        reback.vertical.area = decimal_x * (1 - decimal_y);
+        // console.log(JSON.stringify(reback), reback.vertical.area + reback.horizontal.area + reback.diagonal.area + reback.target.area)
         return reback;
     }
     /*
@@ -177,25 +183,28 @@ var Main = (function (_super) {
         var texture_imgData = texture_ctx.getImageData(0, 0, 750, 784);
         var texture_data = texture_imgData.data;
 
-        var i, j, d,len = clothes_data.length, red, red_index, green, alpha;
+        var i, j, d, len = clothes_data.length, red, red_index, green, alpha, rgbNum;
         var clone_data = this.colour.drawToCanvas(750, 784, 0, 0).getContext("2d").getImageData(0, 0, 750, 784).data;
         for (i = 0; i < 784; i++) {
 
             for (j = 0; j < 750; j++) {
-                red_index = this.getRedIndex(i,j);
+                red_index = this.getRedIndex(i, j);
                 red = clothes_data[red_index];
                 green = clothes_data[red_index + 1];
                 alpha = clothes_data[red_index + 3];
                 if (alpha === 0) continue;
 
-                d=this.caluRowCol(i,j,red,green);
+                d = this.caluRowCol(i, j, red, green);
 
-                texture_data[red_index] = clone_data[d.target.red] * d.target.area + clone_data[d.horizontal.red] * d.horizontal.area + 
-                clone_data[d.vertical.red] * d.vertical.area + clone_data[d.diagonal.red] * d.diagonal.area;
-                texture_data[red_index + 1] = clone_data[d.target.red+1] * d.target.area + clone_data[d.horizontal.red+1] * d.horizontal.area +
-                    clone_data[d.vertical.red+1] * d.vertical.area + clone_data[d.diagonal.red+1] * d.diagonal.area;
-                texture_data[red_index + 2] = clone_data[d.target.red + 2] * d.target.area + clone_data[d.horizontal.red + 2] * d.horizontal.area +
-                    clone_data[d.vertical.red + 2] * d.vertical.area + clone_data[d.diagonal.red + 2] * d.diagonal.area;
+                rgbNum = this.colorBlend([
+                    { rgbNum: { r: clone_data[d.target.red], g: clone_data[d.target.red + 1], b: clone_data[d.target.red + 2]}, percent: d.target.area },
+                    { rgbNum: { r: clone_data[d.horizontal.red], g: clone_data[d.horizontal.red + 1], b: clone_data[d.horizontal.red + 2] }, percent: d.horizontal.area },
+                    { rgbNum: { r: clone_data[d.vertical.red], g: clone_data[d.vertical.red + 1], b: clone_data[d.vertical.red + 2] }, percent: d.vertical.area }, 
+                    { rgbNum: { r: clone_data[d.diagonal.red], g: clone_data[d.diagonal.red + 1], b: clone_data[d.diagonal.red + 2] }, percent: d.diagonal.area }]);
+
+                texture_data[red_index] = Math.round(rgbNum.r);
+                texture_data[red_index + 1] = Math.round(rgbNum.g);
+                texture_data[red_index + 2] = Math.round(rgbNum.b);
                 texture_data[red_index + 3] = clone_data[d.target.red + 3];
             }
         }
@@ -203,6 +212,49 @@ var Main = (function (_super) {
         // document.body.appendChild(canvas_clothes.getCanvas());
         // document.body.appendChild(canvas_texture.getCanvas());
         return texture_ctx;
+    }
+    /*
+        颜色混合计算
+        之前为了实现不同颜色液体混合的颜色变化效果，推敲得出一个计算公式。
+        两种颜色混合后，混色的色值计算，RGB分别用这个公式计算：颜色A-(颜色A-颜色B)*(1-颜色A的百分比)
+        例如：绿和白混合，绿(192, 229, 112)70%，白(255, 255, 255)30%
+        R: 192-(192-255)*(1-0.7) = 210.9
+        G: 229-(229-255)*(1-0.7) = 234.8
+        B: 112-(112-255)*(1-0.7) = 154.9
+        四舍五入后得到混合色值：(211, 235, 155)。
+        经过验证，效果是靠谱的。如果要计算2个以上颜色的混色色值，先计算出其中两个的混色，再和第三个计算，递归至算完全部
+    */
+    // _proto.colorBlend = function (nums) {
+    //     var otherNums, ary1, ary2, percent,sumPercent,r,g,b;
+    //     if (nums.length < 2) {
+    //         throw new Error("请传入最少2个以上的数据");
+    //     } else {
+    //         ary1 = nums[0];
+    //         ary2 = nums[1];
+    //         if (ary1.percent===1){
+    //             return ary1;
+    //         }else if (nums.length === 2) {
+    //             sumPercent = ary1.percent + ary2.percent;
+    //             ary1.percent = ary1.percent / sumPercent;
+    //             percent = 1 - ary1.percent;
+    //             r = ary1.rgbNum.r - (ary1.rgbNum.r - ary2.rgbNum.r) * percent;
+    //             g = ary1.rgbNum.g - (ary1.rgbNum.g - ary2.rgbNum.g) * percent;
+    //             b = ary1.rgbNum.b - (ary1.rgbNum.b - ary2.rgbNum.b) * percent;
+    //             return { rgbNum:{r:r,g:g,b:b}, percent: sumPercent };
+    //         } else {
+    //             otherNums = nums.slice(2);
+    //             return this.colorBlend(otherNums.concat(this.colorBlend([ary1,ary2])));
+    //         }
+    //     }
+    // }
+    _proto.colorBlend=function(nums) {
+        var r=0,g=0,b=0;
+        for(var i=0;i<nums.length;i++){
+            r+=nums[i].rgbNum.r*nums[i].percent;
+            g+=nums[i].rgbNum.g*nums[i].percent;
+            b+=nums[i].rgbNum.b*nums[i].percent;
+        }
+        return {r:r,g:g,b:b}
     }
     /*
         photoshop 正片叠底
