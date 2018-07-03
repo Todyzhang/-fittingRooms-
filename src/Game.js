@@ -14,7 +14,7 @@
 		// 不支持WebGL时自动切换至Canvas
 		Laya.init(750, 1334);
 
-		//Stat.show(0, 0);
+		// Stat.show(0, 0);
 
 		//Laya.stage.alignV = Stage.ALIGN_MIDDLE;
 		Laya.stage.alignH = Stage.ALIGN_CENTER;
@@ -30,10 +30,6 @@
 			{ url: "res/atlas/template/Tab.atlas", type: Laya.Loader.ATLAS },
 			{ url: "comp/model1.jpg", type: Laya.Loader.IMAGE },
 			{ url: "comp/model1_msk.png", type: Laya.Loader.IMAGE },
-			{ url: "comp/model1_s_msk.png", type: Laya.Loader.IMAGE },
-			{ url: "comp/model2_s_msk.png", type: Laya.Loader.IMAGE },
-			{ url: "comp/model3_s_msk.png", type: Laya.Loader.IMAGE },
-			{ url: "comp/model4_s_msk.png", type: Laya.Loader.IMAGE },
 			{ url: "comp/model2.jpg", type: Laya.Loader.IMAGE },
 			{ url: "comp/model2_msk.png", type: Laya.Loader.IMAGE },
 			{ url: "comp/model3.jpg", type: Laya.Loader.IMAGE },

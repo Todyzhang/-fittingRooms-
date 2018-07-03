@@ -19,7 +19,7 @@ var Main = (function (_super) {
         */
         this.colour = new Laya.Sprite();//花色块 
         this.colour_texture = new Laya.Sprite();//花色块纹理层，用于纹理的移到效果 
-        this.msk = new Laya.Sprite();//遮罩层
+        //this.msk = new Laya.Sprite();//遮罩层
         this.blend = new Laya.Sprite();//最终溶合效果层
         this.clothes = new Laya.Sprite();//有色衣服层-置换参照图
 
@@ -34,7 +34,7 @@ var Main = (function (_super) {
         this.colour_texture.pos(0, -201);
 
         this.modelPig.pos(0, 201);
-        this.msk.pos(0, 201);
+        this.clothes.pos(0, 201);
         this.blend.pos(0, 201);
 
         //this.colourWrap.zOrder = 2;
@@ -54,12 +54,13 @@ var Main = (function (_super) {
     _proto.loadModel = function (imgUrl) {
         this.modelPig.graphics.clear();
         this.modelPig.loadImage(imgUrl);
-        this.msk.graphics.clear();
+        // this.msk.graphics.clear();
         this.blend.graphics.clear();
-        this.msk.loadImage(imgUrl.replace(".jpg", "_msk.png"));
+        // this.msk.loadImage(imgUrl.replace(".jpg", "_msk.png"));
         this.clothes.graphics.clear();
-        this.clothes.loadImage(imgUrl.replace(".jpg", "_s_msk.png"));
-        this.colourWrap.mask = this.msk;
+        this.clothes.loadImage(imgUrl.replace(".jpg", "_msk.png"));
+        // this.colourWrap.mask = this.msk;
+        this.colourWrap.mask = this.clothes;
 
         this.initTexturePos();
 
@@ -247,6 +248,8 @@ var Main = (function (_super) {
     //         }
     //     }
     // }
+    
+    //颜色混合计算
     _proto.colorBlend=function(nums) {
         var r=0,g=0,b=0;
         for(var i=0;i<nums.length;i++){
@@ -276,7 +279,8 @@ var Main = (function (_super) {
             var canvas:= htmlCanvas.getCanvas();//获取原生的canvas对象 
             trace(canvas.toDataURL("image/png"));//打印图片base64信息，可以发给服务器或者保存为图片 
         */
-        var canvas_model = this.msk.drawToCanvas(750, 784, 0, 0);
+        console.time("multiply")
+        var canvas_model = this.clothes.drawToCanvas(750, 784, 0, 0);
         var model_ctx = canvas_model.getContext("2d");
         var model_imgData = model_ctx.getImageData(0, 0, 750, 784);
         //var canvas_texture = this.displace();
@@ -321,6 +325,7 @@ var Main = (function (_super) {
 
         this.blend.visible = true;
         this.blend.graphics.drawTexture(new Laya.Texture(canvas_model));
+        console.timeEnd("multiply")
         // document.body.appendChild(canvas_model.getCanvas());
         // document.body.appendChild(canvas_texture.getCanvas());
     };
